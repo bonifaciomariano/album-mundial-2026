@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Álbum Panini · Mundial 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0b0c18;
+    --surface: #12132a;
+    --surface2: #1a1c35;
+    --border: rgba(255,255,255,0.08);
+    --gold: #ffd700;
+    --gold2: #ff8c00;
+    --text: #f0f0f0;
+    --muted: #6b7280;
+    --radius: 12px;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ── HEADER ── */
+  #header {
+    background: linear-gradient(135deg, #0c1a40 0%, #160a30 100%);
+    border-bottom: 2px solid rgba(255,215,0,0.2);
+    padding: 14px 16px 10px;
+    position: sticky;
+    top: 0;
+    z-index: 200;
+  }
+  #header-inner {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  #header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+  .header-eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  .header-title {
+    font-size: 18px;
+    font-weight: 900;
+    color: #fff;
+    line-height: 1.1;
+  }
+  .header-pct {
+    font-size: 28px;
+    font-weight: 900;
+    color: #fff;
+    line-height: 1;
+    text-align: right;
+  }
+  .header-count {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    margin-top: 1px;
+  }
+  #global-bar-track {
+    height: 5px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  #global-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold), var(--gold2));
+    border-radius: 3px;
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+  #save-indicator {
+    font-size: 9px;
+    color: var(--gold);
+    text-align: right;
+    height: 12px;
+    margin-top: 2px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  #save-indicator.visible { opacity: 1; }
+
+  /* ── TABS ── */
+  #tabs-wrap {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  #tabs-wrap::-webkit-scrollbar { display: none; }
+  #tabs {
+    display: flex;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 0 6px;
+  }
+  .tab {
+    flex-shrink: 0;
+    min-width: 42px;
+    padding: 9px 7px 6px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transition: border-color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tab-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted);
+    font-family: 'Inter', sans-serif;
+    transition: color 0.15s;
+  }
+  .tab.active .tab-label { color: #fff; }
+  .tab.done .tab-label { color: var(--gold); }
+  .tab-mini-bar {
+    width: 22px;
+    height: 3px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .tab-mini-fill {
+    height: 100%;
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.3s;
+  }
+
+  /* ── CONTENT ── */
+  #content {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 14px 12px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* ── GROUP SUMMARY ── */
+  .group-summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+  .group-badge {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 900;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .group-teams-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .group-prog-track {
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    flex: 1;
+  }
+  .group-prog-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s;
+  }
+  .group-prog-label {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+  .group-prog-wrap { flex: 1; }
+
+  /* ── TEAM CARD ── */
+  .team-card {
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 12px 12px 14px;
+    border: 1px solid var(--border);
+  }
+  .team-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .team-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .team-code {
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-size: 10px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 0.5px;
+  }
+  .team-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .team-header-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .team-count {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    min-width: 32px;
+    text-align: right;
+  }
+  .team-count.complete { color: var(--gold); }
+  .btn-mini {
+    width: 26px;
+    height: 26px;
+    border-radius: 5px;
+    border: none;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    flex-shrink: 0;
+    font-family: 'Inter', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity 0.1s;
+  }
+  .btn-mini:active { opacity: 0.7; }
+
+  /* ── STICKER GRID ── */
+  .sticker-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+  .sticker {
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.04);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.07s, background 0.12s, border-color 0.12s, box-shadow 0.12s, color 0.12s;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    min-height: 46px;
+  }
+  .sticker:active { transform: scale(0.85); }
+  .sticker.owned {
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold2) 100%);
+    border-color: transparent;
+    color: #1a1a00;
+    box-shadow: 0 2px 10px rgba(255,200,0,0.35);
+  }
+
+  /* ── FWC special ── */
+  .fwc-card { border-color: rgba(255,215,0,0.25); }
+  .fwc-sticker.owned {
+    background: linear-gradient(135deg, #ffe066 0%, #ffa500 100%);
+    box-shadow: 0 2px 12px rgba(255,165,0,0.5);
+  }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(60px);
+    background: #1e2a4a;
+    color: #fff;
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 24px;
+    padding: 8px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 999;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+    white-space: nowrap;
+  }
+  #toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <div id="header-inner">
+    <div id="header-top">
+      <div>
+        <div class="header-eyebrow">Panini · FIFA World Cup</div>
+        <div class="header-title">USA · CAN · MEX 2026</div>
+      </div>
+      <div>
+        <div class="header-pct" id="global-pct">0%</div>
+        <div class="header-count" id="global-count">0 / 979</div>
+        <div id="save-indicator">guardado ✓</div>
+      </div>
+    </div>
+    <div id="global-bar-track">
+      <div id="global-bar-fill"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div id="tabs-wrap">
+  <div id="tabs"></div>
+</div>
+
+<!-- CONTENT -->
+<div id="content"></div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────────────────
+const GROUPS = [
+  { id:"A", color:"#2e7d32", teams:[
+    {code:"MEX",name:"Mexico"},
+    {code:"RSA",name:"South Africa"},
+    {code:"KOR",name:"Korea Republic"},
+    {code:"CZE",name:"Czechia"},
+  ]},
+  { id:"B", color:"#1565c0", teams:[
+    {code:"CAN",name:"Canada"},
+    {code:"BIH",name:"Bosnia-Herz."},
+    {code:"QAT",name:"Qatar"},
+    {code:"SUI",name:"Switzerland"},
+  ]},
+  { id:"C", color:"#b8860b", teams:[
+    {code:"BRA",name:"Brazil"},
+    {code:"MAR",name:"Morocco"},
+    {code:"HAI",name:"Haiti"},
+    {code:"SCO",name:"Scotland"},
+  ]},
+  { id:"D", color:"#6a1b9a", teams:[
+    {code:"USA",name:"USA"},
+    {code:"PAR",name:"Paraguay"},
+    {code:"AUS",name:"Australia"},
+    {code:"TUR",name:"Türkiye"},
+  ]},
+  { id:"E", color:"#bf360c", teams:[
+    {code:"GER",name:"Germany"},
+    {code:"CUW",name:"Curaçao"},
+    {code:"CIV",name:"Côte d'Ivoire"},
+    {code:"ECU",name:"Ecuador"},
+  ]},
+  { id:"F", color:"#00695c", teams:[
+    {code:"NED",name:"Netherlands"},
+    {code:"JPN",name:"Japan"},
+    {code:"SWE",name:"Sweden"},
+    {code:"TUN",name:"Tunisia"},
+  ]},
+  { id:"G", color:"#4527a0", teams:[
+    {code:"BEL",name:"Belgium"},
+    {code:"EGY",name:"Egypt"},
+    {code:"IRN",name:"IR Iran"},
+    {code:"NZL",name:"New Zealand"},
+  ]},
+  { id:"H", color:"#00838f", teams:[
+    {code:"ESP",name:"Spain"},
+    {code:"CPV",name:"Cabo Verde"},
+    {code:"KSA",name:"Saudi Arabia"},
+    {code:"URU",name:"Uruguay"},
+  ]},
+  { id:"I", color:"#283593", teams:[
+    {code:"FRA",name:"France"},
+    {code:"SEN",name:"Senegal"},
+    {code:"IRQ",name:"Iraq"},
+    {code:"NOR",name:"Norway"},
+  ]},
+  { id:"J", color:"#558b2f", teams:[
+    {code:"ARG",name:"Argentina"},
+    {code:"ALG",name:"Algeria"},
+    {code:"AUT",name:"Austria"},
+    {code:"JOR",name:"Jordan"},
+  ]},
+  { id:"K", color:"#e65100", teams:[
+    {code:"POR",name:"Portugal"},
+    {code:"COD",name:"Congo DR"},
+    {code:"UZB",name:"Uzbekistan"},
+    {code:"COL",name:"Colombia"},
+  ]},
+  { id:"L", color:"#ad1457", teams:[
+    {code:"ENG",name:"England"},
+    {code:"CRO",name:"Croatia"},
+    {code:"GHA",name:"Ghana"},
+    {code:"PAN",name:"Panama"},
+  ]},
+];
+
+const FWC_COUNT = 19;
+const STICKERS_PER_TEAM = 20;
+const STORAGE_KEY = "panini-wc2026-v2";
+const TOTAL = GROUPS.reduce((a, g) => a + g.teams.length * STICKERS_PER_TEAM, 0) + FWC_COUNT;
+
+// ─── STATE ──────────────────────────────────────────────────────────────────
+let collection = {};
+let activeGroup = "A";
+let saveTimer = null;
+
+function stickerKey(code, num) { return `${code}-${num}`; }
+
+function initCollection() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try { collection = JSON.parse(saved); return; } catch {}
+  }
+  collection = {};
+  for (const g of GROUPS)
+    for (const t of g.teams)
+      for (let i = 1; i <= STICKERS_PER_TEAM; i++)
+        collection[stickerKey(t.code, i)] = false;
+  for (let i = 1; i <= FWC_COUNT; i++)
+    collection[stickerKey("FWC", i)] = false;
+}
+
+function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(collection));
+    showSaveIndicator();
+  }, 400);
+}
+
+function showSaveIndicator() {
+  const el = document.getElementById("save-indicator");
+  el.classList.add("visible");
+  setTimeout(() => el.classList.remove("visible"), 1200);
+}
+
+// ─── STATS ──────────────────────────────────────────────────────────────────
+function countOwned(keys) {
+  return keys.filter(k => collection[k]).length;
+}
+
+function teamKeys(code) {
+  return Array.from({length: STICKERS_PER_TEAM}, (_, i) => stickerKey(code, i + 1));
+}
+
+function groupKeys(group) {
+  return group.teams.flatMap(t => teamKeys(t.code));
+}
+
+function fwcKeys() {
+  return Array.from({length: FWC_COUNT}, (_, i) => stickerKey("FWC", i + 1));
+}
+
+function allKeys() {
+  return [...GROUPS.flatMap(g => groupKeys(g)), ...fwcKeys()];
+}
+
+// ─── RENDER ─────────────────────────────────────────────────────────────────
+function updateGlobalHeader() {
+  const owned = countOwned(allKeys());
+  const pct = Math.round((owned / TOTAL) * 100);
+  document.getElementById("global-pct").textContent = pct + "%";
+  document.getElementById("global-pct").style.color = pct === 100 ? "var(--gold)" : "#fff";
+  document.getElementById("global-count").textContent = owned + " / " + TOTAL;
+  document.getElementById("global-bar-fill").style.width = pct + "%";
+}
+
+function updateAllTabBars() {
+  // group tabs
+  for (const g of GROUPS) {
+    const keys = groupKeys(g);
+    const owned = countOwned(keys);
+    const pct = Math.round((owned / keys.length) * 100);
+    const fill = document.getElementById(`tab-fill-${g.id}`);
+    const label = document.getElementById(`tab-label-${g.id}`);
+    const tab = document.getElementById(`tab-${g.id}`);
+    if (!fill) continue;
+    fill.style.width = pct + "%";
+    fill.style.background = pct === 100 ? "var(--gold)" : g.color;
+    if (pct === 100) { tab.classList.add("done"); } else { tab.classList.remove("done"); }
+  }
+  // FWC tab
+  const fowned = countOwned(fwcKeys());
+  const fpct = Math.round((fowned / FWC_COUNT) * 100);
+  const ffill = document.getElementById("tab-fill-FWC");
+  const ftab = document.getElementById("tab-FWC");
+  if (ffill) {
+    ffill.style.width = fpct + "%";
+    ffill.style.background = fpct === 100 ? "var(--gold)" : "var(--gold2)";
+    if (fpct === 100) { ftab.classList.add("done"); } else { ftab.classList.remove("done"); }
+  }
+}
+
+function renderTabs() {
+  const container = document.getElementById("tabs");
+  container.innerHTML = "";
+
+  [...GROUPS, {id:"FWC", color:"var(--gold2)"}].forEach(g => {
+    const isFWC = g.id === "FWC";
+    const btn = document.createElement("button");
+    btn.className = "tab" + (activeGroup === g.id ? " active" : "");
+    btn.id = "tab-" + g.id;
+    btn.setAttribute("aria-label", "Grupo " + g.id);
+    btn.innerHTML = `
+      <span class="tab-label" id="tab-label-${g.id}">${g.id}</span>
+      <div class="tab-mini-bar">
+        <div class="tab-mini-fill" id="tab-fill-${g.id}"></div>
+      </div>`;
+    if (g.color && !isFWC) btn.style.borderBottomColor = activeGroup === g.id ? g.color : "transparent";
+    if (isFWC) btn.style.borderBottomColor = activeGroup === "FWC" ? "var(--gold)" : "transparent";
+    btn.onclick = () => switchGroup(g.id);
+    container.appendChild(btn);
+  });
+
+  updateAllTabBars();
+}
+
+function renderContent() {
+  const container = document.getElementById("content");
+  container.innerHTML = "";
+
+  if (activeGroup === "FWC") {
+    renderFWC(container);
+    return;
+  }
+
+  const group = GROUPS.find(g => g.id === activeGroup);
+  if (!group) return;
+
+  // Group summary
+  const keys = groupKeys(group);
+  const owned = countOwned(keys);
+  const pct = owned === keys.length ? 100 : Math.round((owned / keys.length) * 100);
+
+  const summary = document.createElement("div");
+  summary.className = "group-summary";
+  summary.innerHTML = `
+    <div class="group-badge" style="background:${group.color}">${group.id}</div>
+    <div class="group-prog-wrap">
+      <div class="group-teams-label">${group.teams.map(t => t.name).join(" · ")}</div>
+      <div class="group-prog-track">
+        <div class="group-prog-fill" style="width:${pct}%;background:${pct===100?'var(--gold)':group.color}"></div>
+      </div>
+      <div class="group-prog-label">${owned} de ${keys.length} figuritas</div>
+    </div>`;
+  container.appendChild(summary);
+
+  // Team cards
+  for (const team of group.teams) {
+    container.appendChild(renderTeamCard(team, group.color));
+  }
+}
+
+function renderTeamCard(team, groupColor) {
+  const keys = teamKeys(team.code);
+  const owned = countOwned(keys);
+  const complete = owned === STICKERS_PER_TEAM;
+
+  const card = document.createElement("div");
+  card.className = "team-card";
+  card.id = "card-" + team.code;
+
+  // Header
+  const header = document.createElement("div");
+  header.className = "team-header";
+  header.innerHTML = `
+    <div class="team-header-left">
+      <span class="team-code" style="background:${groupColor}">${team.code}</span>
+      <span class="team-name">${team.name}</span>
+    </div>
+    <div class="team-header-right">
+      <span class="team-count${complete?' complete':''}" id="count-${team.code}">${owned}/${STICKERS_PER_TEAM}</span>
+      <button class="btn-mini" style="background:${groupColor}" onclick="markAll('${team.code}')" title="Marcar todas">✓</button>
+      <button class="btn-mini" style="background:#374151" onclick="clearAll('${team.code}')" title="Borrar todas">✕</button>
+    </div>`;
+  card.appendChild(header);
+
+  // Grid
+  const grid = document.createElement("div");
+  grid.className = "sticker-grid";
+  grid.id = "grid-" + team.code;
+
+  for (let i = 1; i <= STICKERS_PER_TEAM; i++) {
+    const key = stickerKey(team.code, i);
+    const dot = document.createElement("button");
+    dot.className = "sticker" + (collection[key] ? " owned" : "");
+    dot.textContent = i;
+    dot.id = "sticker-" + key;
+    dot.onclick = () => toggleSticker(team.code, i);
+    grid.appendChild(dot);
+  }
+
+  card.appendChild(grid);
+  return card;
+}
+
+function renderFWC(container) {
+  const owned = countOwned(fwcKeys());
+  const complete = owned === FWC_COUNT;
+  const pct = Math.round((owned / FWC_COUNT) * 100);
+
+  const card = document.createElement("div");
+  card.className = "team-card fwc-card";
+
+  const header = document.createElement("div");
+  header.className = "team-header";
+  header.innerHTML = `
+    <div class="team-header-left">
+      <span class="team-code" style="background:linear-gradient(135deg,var(--gold),var(--gold2));color:#1a1a00">FWC</span>
+      <span class="team-name">FIFA World Cup</span>
+    </div>
+    <div class="team-header-right">
+      <span class="team-count${complete?' complete':''}" id="count-FWC">${owned}/${FWC_COUNT}</span>
+      <button class="btn-mini" style="background:#b8860b" onclick="markAll('FWC')" title="Marcar todas">✓</button>
+      <button class="btn-mini" style="background:#374151" onclick="clearAll('FWC')" title="Borrar todas">✕</button>
+    </div>`;
+  card.appendChild(header);
+
+  // progress
+  const progWrap = document.createElement("div");
+  progWrap.style.cssText = "margin-bottom:12px;";
+  progWrap.innerHTML = `
+    <div class="group-prog-track">
+      <div class="group-prog-fill" id="fwc-prog-fill" style="width:${pct}%;background:${pct===100?'var(--gold)':'var(--gold2)'}"></div>
+    </div>
+    <div class="group-prog-label" style="margin-top:4px">${owned} de ${FWC_COUNT} figuritas</div>`;
+  card.appendChild(progWrap);
+
+  const grid = document.createElement("div");
+  grid.className = "sticker-grid";
+  grid.id = "grid-FWC";
+
+  for (let i = 1; i <= FWC_COUNT; i++) {
+    const key = stickerKey("FWC", i);
+    const dot = document.createElement("button");
+    dot.className = "sticker fwc-sticker" + (collection[key] ? " owned" : "");
+    dot.textContent = i;
+    dot.id = "sticker-" + key;
+    dot.onclick = () => toggleFWC(i);
+    grid.appendChild(dot);
+  }
+
+  card.appendChild(grid);
+  container.appendChild(card);
+}
+
+// ─── ACTIONS ────────────────────────────────────────────────────────────────
+function toggleSticker(code, num) {
+  const key = stickerKey(code, num);
+  collection[key] = !collection[key];
+  // update just that dot
+  const dot = document.getElementById("sticker-" + key);
+  if (dot) dot.className = "sticker" + (collection[key] ? " owned" : "");
+  // update team count
+  updateTeamCount(code);
+  updateGlobalHeader();
+  updateAllTabBars();
+  save();
+}
+
+function toggleFWC(num) {
+  const key = stickerKey("FWC", num);
+  collection[key] = !collection[key];
+  const dot = document.getElementById("sticker-" + key);
+  if (dot) dot.className = "sticker fwc-sticker" + (collection[key] ? " owned" : "");
+  const owned = countOwned(fwcKeys());
+  const countEl = document.getElementById("count-FWC");
+  if (countEl) {
+    countEl.textContent = owned + "/" + FWC_COUNT;
+    countEl.className = "team-count" + (owned === FWC_COUNT ? " complete" : "");
+  }
+  const pct = Math.round((owned / FWC_COUNT) * 100);
+  const fill = document.getElementById("fwc-prog-fill");
+  if (fill) {
+    fill.style.width = pct + "%";
+    fill.style.background = pct === 100 ? "var(--gold)" : "var(--gold2)";
+  }
+  updateGlobalHeader();
+  updateAllTabBars();
+  save();
+}
+
+function updateTeamCount(code) {
+  const keys = teamKeys(code);
+  const owned = countOwned(keys);
+  const complete = owned === STICKERS_PER_TEAM;
+  const el = document.getElementById("count-" + code);
+  if (el) {
+    el.textContent = owned + "/" + STICKERS_PER_TEAM;
+    el.className = "team-count" + (complete ? " complete" : "");
+  }
+}
+
+function markAll(code) {
+  const isFWC = code === "FWC";
+  const count = isFWC ? FWC_COUNT : STICKERS_PER_TEAM;
+  for (let i = 1; i <= count; i++) {
+    const key = stickerKey(code, i);
+    collection[key] = true;
+    const dot = document.getElementById("sticker-" + key);
+    if (dot) dot.className = "sticker" + (isFWC ? " fwc-sticker" : "") + " owned";
+  }
+  if (isFWC) {
+    const el = document.getElementById("count-FWC");
+    if (el) { el.textContent = FWC_COUNT+"/"+FWC_COUNT; el.className = "team-count complete"; }
+    const fill = document.getElementById("fwc-prog-fill");
+    if (fill) { fill.style.width = "100%"; fill.style.background = "var(--gold)"; }
+  } else {
+    updateTeamCount(code);
+  }
+  updateGlobalHeader(); updateAllTabBars(); save();
+  toast("✓ Todas marcadas");
+}
+
+function clearAll(code) {
+  const isFWC = code === "FWC";
+  const count = isFWC ? FWC_COUNT : STICKERS_PER_TEAM;
+  for (let i = 1; i <= count; i++) {
+    const key = stickerKey(code, i);
+    collection[key] = false;
+    const dot = document.getElementById("sticker-" + key);
+    if (dot) dot.className = "sticker" + (isFWC ? " fwc-sticker" : "");
+  }
+  if (isFWC) {
+    const el = document.getElementById("count-FWC");
+    if (el) { el.textContent = "0/"+FWC_COUNT; el.className = "team-count"; }
+    const fill = document.getElementById("fwc-prog-fill");
+    if (fill) { fill.style.width = "0%"; }
+  } else {
+    updateTeamCount(code);
+  }
+  updateGlobalHeader(); updateAllTabBars(); save();
+  toast("Borradas");
+}
+
+function switchGroup(id) {
+  activeGroup = id;
+  // update tab active states
+  document.querySelectorAll(".tab").forEach(t => {
+    t.classList.remove("active");
+    t.style.borderBottomColor = "transparent";
+  });
+  const activeTab = document.getElementById("tab-" + id);
+  if (activeTab) {
+    activeTab.classList.add("active");
+    const group = GROUPS.find(g => g.id === id);
+    activeTab.style.borderBottomColor = id === "FWC" ? "var(--gold)" : (group ? group.color : "var(--gold)");
+  }
+  renderContent();
+}
+
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 1600);
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+initCollection();
+renderTabs();
+renderContent();
+updateGlobalHeader();
+
+// set first tab border color
+const firstTab = document.getElementById("tab-A");
+if (firstTab) firstTab.style.borderBottomColor = GROUPS[0].color;
+</script>
+</body>
+</html>
