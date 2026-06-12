@@ -248,12 +248,13 @@ button{font-family:'Inter',sans-serif;cursor:pointer;-webkit-tap-highlight-color
   <div class="album-header">
     <div>
       <div class="album-pct" id="alb-pct">0%</div>
-      <div class="album-sub" id="alb-count">0 / 979</div>
+      <div class="album-sub" id="alb-count">0 / 980</div>
       <div class="save-dot" id="alb-save">guardado ✓</div>
     </div>
     <div class="album-bar-wrap">
       <div class="album-bar-track"><div class="album-bar-fill" id="alb-bar" style="width:0%"></div></div>
     </div>
+    <button onclick="shareTotal()" style="flex-shrink:0;background:linear-gradient(135deg,#1d4ed8,#4f46e5);border:none;border-radius:8px;color:#fff;padding:8px 10px;font-size:11px;font-weight:700;cursor:pointer;line-height:1.3;text-align:center;font-family:'Inter',sans-serif">&#128203;<br>Total</button>
   </div>
   <div class="album-tabs-wrap">
     <div class="album-tabs" id="album-tabs"></div>
@@ -459,7 +460,8 @@ function renderAlbumContent(){
     <div class="gsum-teams">${group.teams.map(t=>`${FLAGS[t.code]||''}${t.name}`).join(' · ')}</div>
     <div class="gsum-bar-track"><div class="gsum-bar-fill" style="width:${pct}%;background:${pct===100?'var(--gold)':group.color}"></div></div>
     <div class="gsum-label">${owned} de ${keys.length} figuritas</div>
-  </div>`;
+  </div>
+  <button onclick="shareGroup('${group.id}')" style="flex-shrink:0;background:rgba(29,78,216,0.25);border:1px solid rgba(99,102,241,0.4);border-radius:7px;color:#93c5fd;padding:6px 9px;font-size:10px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap">📋 Grupo</button>`;
   container.appendChild(summary);
   for(const team of group.teams) container.appendChild(renderTeamCard(team,group.color));
 }
@@ -949,8 +951,89 @@ function selectBracketWinner(roundKey,idx,code){
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
 // SHARE MISSING
 // ═══════════════════════════════════════════════════════════════════════
+function buildTeamLines(code){
+  const isFWC=code==='FWC';
+  const nums=isFWC?fwcNums():Array.from({length:SPT},(_,i)=>i+1);
+  const flag=isFWC?'🏆':(FLAGS[code]||'');
+  const name=isFWC?'FIFA World Cup':(GROUPS.flatMap(g=>g.teams).find(t=>t.code===code)?.name||code);
+  const missing=nums.filter(n=>!stickerOwned(`${code}-${n}`));
+  const repeated=nums.filter(n=>stickerRepeated(`${code}-${n}`));
+  return {flag,name,missing,repeated};
+}
+
+function doShare(msg){
+  if(!msg){toast('Nada para compartir');return;}
+  if(navigator.share){
+    navigator.share({text:msg}).catch(()=>{});
+  } else if(navigator.clipboard){
+    navigator.clipboard.writeText(msg).then(()=>toast('📋 Copiado al portapapeles'));
+  } else {
+    prompt('Copiá este texto:',msg);
+  }
+}
+
+function shareMissing(code){
+  const {flag,name,missing,repeated}=buildTeamLines(code);
+  if(missing.length===0&&repeated.length===0){toast('¡Equipo completo y sin repetidas!');return;}
+  let msg=`${flag} *${name}*\n`;
+  if(missing.length===0) msg+=`✅ ¡Completo!\n`;
+  else msg+=`📋 *Me faltan (${missing.length}):* ${missing.join(', ')}\n`;
+  if(repeated.length>0) msg+=`🔵 *Repetidas (${repeated.length}):* ${repeated.join(', ')}\n`;
+  doShare(msg);
+}
+
+function shareGroup(gid){
+  const group=GROUPS.find(g=>g.id===gid);
+  if(!group) return;
+  const missingLines=[],repeatedLines=[];
+  for(const t of group.teams){
+    const {flag,name,missing,repeated}=buildTeamLines(t.code);
+    if(missing.length>0) missingLines.push(`  ${flag} ${name}: ${missing.join(', ')}`);
+    if(repeated.length>0) repeatedLines.push(`  ${flag} ${name}: ${repeated.join(', ')}`);
+  }
+  const gKeys=groupKeys(group),owned=albumOwned(gKeys),total=gKeys.length;
+  let msg=`⚽ *Grupo ${gid}* — ${owned}/${total}\n`;
+  msg+=group.teams.map(t=>`${FLAGS[t.code]||''}${t.name}`).join(' · ')+'\n\n';
+  if(missingLines.length===0) msg+=`✅ ¡Grupo completo!\n`;
+  else msg+=`📋 *Me faltan:*\n${missingLines.join('\n')}\n`;
+  if(repeatedLines.length>0) msg+=`\n🔵 *Repetidas:*\n${repeatedLines.join('\n')}\n`;
+  doShare(msg);
+}
+
+function shareTotal(){
+  const all=albumAllKeys(),owned=albumOwned(all),total=all.length,pct=Math.round(owned/total*100);
+  const missingLines=[],repeatedLines=[];
+  let prevGroup='';
+  for(const g of GROUPS){
+    for(const t of g.teams){
+      const {flag,name,missing,repeated}=buildTeamLines(t.code);
+      if(missing.length>0){
+        if(g.id!==prevGroup){missingLines.push(`\n*Grupo ${g.id}*`);prevGroup=g.id;}
+        missingLines.push(`  ${flag} ${name}: ${missing.join(', ')}`);
+      }
+      if(repeated.length>0) repeatedLines.push(`  ${flag} ${name}: ${repeated.join(', ')}`);
+    }
+  }
+  const {flag:ff,name:fn,missing:fm,repeated:fr}=buildTeamLines('FWC');
+  if(fm.length>0){missingLines.push(`\n*FWC*`);missingLines.push(`  ${ff} ${fn}: ${fm.join(', ')}`);}
+  if(fr.length>0) repeatedLines.push(`  ${ff} ${fn}: ${fr.join(', ')}`);
+
+  let msg=`⚽ *Mi álbum Panini — Mundial 2026*\n`;
+  msg+=`📊 ${owned} / ${total} (${pct}%)\n`;
+  if(missingLines.length===0){
+    msg+=`\n✅ ¡Álbum completo!`;
+  } else {
+    msg+=`\n📋 *Me faltan:*${missingLines.join('\n')}`;
+  }
+  if(repeatedLines.length>0){
+    msg+=`\n\n🔵 *Tengo repetidas (para canje):*\n${repeatedLines.join('\n')}`;
+  }
+  doShare(msg);
+}
+
 function shareMissing(code){
   const isFWC=code==='FWC';
   const nums=isFWC?fwcNums():Array.from({length:SPT},(_,i)=>i+1);
