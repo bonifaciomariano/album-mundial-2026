@@ -254,13 +254,27 @@ button{font-family:'Inter',sans-serif;cursor:pointer;-webkit-tap-highlight-color
     <div class="album-bar-wrap">
       <div class="album-bar-track"><div class="album-bar-fill" id="alb-bar" style="width:0%"></div></div>
     </div>
-    <button onclick="shareTotal()" style="flex-shrink:0;background:linear-gradient(135deg,#1d4ed8,#4f46e5);border:none;border-radius:8px;color:#fff;padding:8px 10px;font-size:11px;font-weight:700;cursor:pointer;line-height:1.3;text-align:center;font-family:'Inter',sans-serif">&#128203;<br>Total</button>
+    <div style="display:flex;gap:6px;flex-shrink:0">
+      <button onclick="shareTotal()" style="background:linear-gradient(135deg,#1d4ed8,#4f46e5);border:none;border-radius:8px;color:#fff;padding:7px 9px;font-size:10px;font-weight:700;cursor:pointer;line-height:1.4;text-align:center;font-family:'Inter',sans-serif">&#128203;<br>Faltan</button>
+      <button onclick="confirmExport()" style="background:linear-gradient(135deg,#065f46,#0d6a5e);border:none;border-radius:8px;color:#fff;padding:7px 9px;font-size:10px;font-weight:700;cursor:pointer;line-height:1.4;text-align:center;font-family:'Inter',sans-serif">&#128190;<br>Guardar</button>
+      <button onclick="confirmImport()" style="background:linear-gradient(135deg,#4a1d96,#6b3fa0);border:none;border-radius:8px;color:#fff;padding:7px 9px;font-size:10px;font-weight:700;cursor:pointer;line-height:1.4;text-align:center;font-family:'Inter',sans-serif">&#128228;<br>Cargar</button>
+    </div>
   </div>
   <div class="album-tabs-wrap">
     <div class="album-tabs" id="album-tabs"></div>
   </div>
   <div class="album-content" id="album-content"></div>
 </section>
+
+<!-- EXPORT/IMPORT MODAL -->
+<div id="xfer-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:20px">
+  <div style="background:#161828;border:1px solid rgba(26,122,110,0.4);border-radius:14px;max-width:340px;width:100%;padding:20px">
+    <div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:8px" id="xfer-title"></div>
+    <div style="font-size:13px;color:#9ca3af;line-height:1.5;margin-bottom:18px" id="xfer-body"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap" id="xfer-actions"></div>
+  </div>
+</div>
+<input type="file" id="import-file" accept=".json" style="display:none" onchange="doImport(this)">
 
 <section class="section" id="sec-fixture">
   <div class="fix-group-tabs" id="fix-group-tabs"></div>
@@ -1068,6 +1082,91 @@ function shareMissing(code){
     // last resort: prompt
     prompt('Copiá este texto:',msg);
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// EXPORT / IMPORT
+// ═══════════════════════════════════════════════════════════════════════
+function showModal(title, body, actions){
+  const m=document.getElementById('xfer-modal');
+  document.getElementById('xfer-title').textContent=title;
+  document.getElementById('xfer-body').textContent=body;
+  const ac=document.getElementById('xfer-actions');
+  ac.innerHTML='';
+  actions.forEach(({label,color,fn})=>{
+    const btn=document.createElement('button');
+    btn.textContent=label;
+    btn.style.cssText=`flex:1;padding:10px;border:none;border-radius:8px;background:${color};color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif`;
+    btn.onclick=()=>{m.style.display='none';fn&&fn();};
+    ac.appendChild(btn);
+  });
+  m.style.display='flex';
+  m.onclick=(e)=>{if(e.target===m) m.style.display='none';};
+}
+
+function confirmExport(){
+  showModal(
+    '💾 Guardar progreso',
+    'Descarga un archivo con todo tu álbum. Guardalo en el teléfono o mandatelo por WhatsApp/mail para abrirlo en otra computadora.',
+    [
+      {label:'Cancelar', color:'#374151', fn:null},
+      {label:'Descargar', color:'#065f46', fn:doExport},
+    ]
+  );
+}
+
+function confirmImport(){
+  showModal(
+    '📤 Cargar desde otro dispositivo',
+    'Seleccioná el archivo que exportaste desde tu otro dispositivo. Esto va a reemplazar todo lo que tenés guardado acá.',
+    [
+      {label:'Cancelar', color:'#374151', fn:null},
+      {label:'Elegir archivo', color:'#4a1d96', fn:()=>document.getElementById('import-file').click()},
+    ]
+  );
+}
+
+function doExport(){
+  const data=JSON.stringify(state,null,2);
+  const blob=new Blob([data],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const date=new Date().toISOString().slice(0,10);
+  a.href=url;a.download=`album-mundial2026-${date}.json`;
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);URL.revokeObjectURL(url);
+  toast('💾 Archivo descargado');
+}
+
+function doImport(input){
+  const file=input.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=(e)=>{
+    try{
+      const imported=JSON.parse(e.target.result);
+      // basic validation
+      if(typeof imported!=='object'||!imported.stickers) throw new Error('Formato inválido');
+      state=imported;
+      // ensure missing keys
+      for(const g of GROUPS) for(const t of g.teams)
+        for(let i=1;i<=SPT;i++){const k=`${t.code}-${i}`;if(state.stickers[k]===undefined) state.stickers[k]=false;}
+      const fwcAll=['00',...Array.from({length:19},(_,i)=>String(i+1))];
+      for(const n of fwcAll){const k=`FWC-${n}`;if(state.stickers[k]===undefined) state.stickers[k]=false;}
+      if(!state.scores) state.scores={};
+      if(!state.bracket) state.bracket={};
+      save();
+      renderAlbumTabs();renderAlbumContent();updateAlbumGlobal();
+      renderFixtureTabs();renderFixtureContent();
+      toast('✅ Progreso cargado correctamente');
+    } catch(err){
+      showModal('Error al cargar','El archivo no es válido o está dañado. Asegurate de usar un archivo exportado desde esta app.',[
+        {label:'Entendido',color:'#374151',fn:null}
+      ]);
+    }
+    input.value='';
+  };
+  reader.readAsText(file);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
