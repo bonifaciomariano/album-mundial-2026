@@ -113,6 +113,9 @@ button{font-family:'Inter',sans-serif;cursor:pointer;-webkit-tap-highlight-color
 }
 .sticker:active{transform:scale(.85)}
 .sticker.owned{background:linear-gradient(135deg,var(--gold) 0%,var(--gold2) 100%);color:#1a1400;box-shadow:0 2px 10px rgba(212,175,55,.35)}
+.sticker.repeated{background:linear-gradient(135deg,#3b82f6 0%,#6366f1 100%);color:#fff;box-shadow:0 2px 10px rgba(99,102,241,.4);border:none}
+.sticker.repeated::after{content:'×2';position:absolute;font-size:8px;font-weight:900;bottom:3px;right:3px;opacity:.85}
+.sticker{position:relative}
 
 /* ── FIXTURE ── */
 .fix-group-tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;margin-bottom:14px}
@@ -306,7 +309,7 @@ const GROUPS = [
   {id:'K',color:'#c04000',teams:[{code:'POR',name:'Portugal'},{code:'COD',name:'Congo DR'},{code:'UZB',name:'Uzbekistan'},{code:'COL',name:'Colombia'}]},
   {id:'L',color:'#911040',teams:[{code:'ENG',name:'England'},{code:'CRO',name:'Croatia'},{code:'GHA',name:'Ghana'},{code:'PAN',name:'Panama'}]},
 ];
-const FWC_COUNT=19;
+const FWC_COUNT=20; // 00, 1-19
 const SPT=20;
 
 // Matches: each group has 6 matches (3 jornadas x 2)
@@ -330,10 +333,11 @@ function loadState(){
     const s=localStorage.getItem(SK);
     if(s) state=JSON.parse(s);
   } catch(e){}
-  // ensure stickers populated
+  // ensure stickers populated (fwcNums not available yet, inline it)
   for(const g of GROUPS) for(const t of g.teams)
     for(let i=1;i<=SPT;i++){const k=`${t.code}-${i}`;if(state.stickers[k]===undefined) state.stickers[k]=false;}
-  for(let i=1;i<=FWC_COUNT;i++){const k=`FWC-${i}`;if(state.stickers[k]===undefined) state.stickers[k]=false;}
+  const fwcAll=['00',...Array.from({length:19},(_,i)=>String(i+1))];
+  for(const n of fwcAll){const k=`FWC-${n}`;if(state.stickers[k]===undefined) state.stickers[k]=false;}
 }
 let saveTimer=null;
 function save(){
@@ -363,13 +367,31 @@ function switchTab(tab){
 // ═══════════════════════════════════════════════════════════════════════
 let activeAlbumGroup='A';
 
+function fwcNums(){return ['00',...Array.from({length:19},(_,i)=>String(i+1))];}
+function fwcKeys(){return fwcNums().map(n=>`FWC-${n}`);}
 function albumAllKeys(){
   const k=[];
   for(const g of GROUPS) for(const t of g.teams) for(let i=1;i<=SPT;i++) k.push(`${t.code}-${i}`);
-  for(let i=1;i<=FWC_COUNT;i++) k.push(`FWC-${i}`);
+  for(const n of fwcNums()) k.push(`FWC-${n}`);
   return k;
 }
-function albumOwned(keys){return keys.filter(k=>state.stickers[k]).length;}
+function albumOwned(keys){return keys.filter(k=>stickerOwned(k)).length;}
+function albumRepeated(keys){return keys.filter(k=>stickerRepeated(k)).length;}
+// sticker value: false/undefined = not owned, true = owned, 2 = repeated
+function stickerOwned(k){return !!state.stickers[k];}
+function stickerRepeated(k){return state.stickers[k]===2;}
+function stickerClass(k){
+  const v=state.stickers[k];
+  if(v===2) return 'sticker repeated';
+  if(v) return 'sticker owned';
+  return 'sticker';
+}
+function cycleStickerState(k){
+  const v=state.stickers[k];
+  if(!v) state.stickers[k]=true;       // none → owned
+  else if(v===true) state.stickers[k]=2; // owned → repeated
+  else state.stickers[k]=false;          // repeated → none
+}
 function teamKeys(code){return Array.from({length:SPT},(_,i)=>`${code}-${i+1}`);}
 function groupKeys(g){return g.teams.flatMap(t=>teamKeys(t.code));}
 
@@ -387,7 +409,7 @@ function renderAlbumTabs(){
   container.innerHTML='';
   [...GROUPS,{id:'FWC',color:'#d4af37'}].forEach(g=>{
     const isFWC=g.id==='FWC';
-    const keys=isFWC?Array.from({length:FWC_COUNT},(_,i)=>`FWC-${i+1}`):groupKeys(g);
+    const keys=isFWC?fwcKeys():groupKeys(g);
     const owned=albumOwned(keys),total=keys.length,pct=total>0?Math.round(owned/total*100):0;
     const btn=document.createElement('button');
     btn.className='atab'+(activeAlbumGroup===g.id?' active':'')+(pct===100?' done':'');
@@ -413,7 +435,7 @@ function updateAlbumTabBar(gid){
   if(!fill) return;
   const isFWC=gid==='FWC';
   const g=GROUPS.find(x=>x.id===gid);
-  const keys=isFWC?Array.from({length:FWC_COUNT},(_,i)=>`FWC-${i+1}`):groupKeys(g);
+  const keys=isFWC?fwcKeys():groupKeys(g);
   const owned=albumOwned(keys),total=keys.length,pct=total>0?Math.round(owned/total*100):0;
   fill.style.width=pct+'%';
   fill.style.background=pct===100?'var(--gold)':(isFWC?'var(--gold)':g.color);
@@ -454,6 +476,7 @@ function renderTeamCard(team,color){
   </div>
   <div class="team-hdr-r">
     <span class="team-cnt${complete?' done':''}" id="tcnt-${team.code}">${owned}/${SPT}</span>
+    <button class="mbtn" style="background:#1d4ed8" onclick="shareMissing('${team.code}')" title="Me faltan">📋</button>
     <button class="mbtn" style="background:${color}" onclick="markAllTeam('${team.code}')" title="Marcar todas">✓</button>
     <button class="mbtn" style="background:#374151" onclick="clearAllTeam('${team.code}')" title="Borrar todas">✕</button>
   </div>`;
@@ -462,7 +485,7 @@ function renderTeamCard(team,color){
   for(let i=1;i<=SPT;i++){
     const k=`${team.code}-${i}`;
     const dot=document.createElement('button');
-    dot.className='sticker'+(state.stickers[k]?' owned':'');
+    dot.className=stickerClass(k);
     dot.textContent=i;dot.id='stk-'+k;
     dot.onclick=()=>toggleSticker(team.code,i);
     grid.appendChild(dot);
@@ -471,8 +494,8 @@ function renderTeamCard(team,color){
 }
 
 function renderFWCPanel(container){
-  const keys=Array.from({length:FWC_COUNT},(_,i)=>`FWC-${i+1}`);
-  const owned=albumOwned(keys),complete=owned===FWC_COUNT,pct=Math.round(owned/FWC_COUNT*100);
+  const keys=fwcKeys();
+  const owned=albumOwned(keys),rep=albumRepeated(keys),complete=owned===FWC_COUNT,pct=Math.round(owned/FWC_COUNT*100);
   const card=document.createElement('div');card.className='team-card fwc-card';
   const hdr=document.createElement('div');hdr.className='team-hdr';
   hdr.innerHTML=`<div class="team-hdr-l">
@@ -481,7 +504,8 @@ function renderFWCPanel(container){
     <span class="team-name">FIFA World Cup</span>
   </div>
   <div class="team-hdr-r">
-    <span class="team-cnt${complete?' done':''}" id="tcnt-FWC">${owned}/${FWC_COUNT}</span>
+    <span class="team-cnt${complete?' done':''}" id="tcnt-FWC">${owned}/${FWC_COUNT}${rep>0?' +'+rep+'🔵':''}</span>
+    <button class="mbtn" style="background:#1d4ed8" onclick="shareMissing('FWC')" title="Me faltan">📋</button>
     <button class="mbtn" style="background:#8b6914" onclick="markAllTeam('FWC')">✓</button>
     <button class="mbtn" style="background:#374151" onclick="clearAllTeam('FWC')">✕</button>
   </div>`;
@@ -489,14 +513,15 @@ function renderFWCPanel(container){
   const pbar=document.createElement('div');
   pbar.style.cssText='margin-bottom:12px';
   pbar.innerHTML=`<div class="gsum-bar-track"><div class="gsum-bar-fill" id="fwc-pbar" style="width:${pct}%;background:${pct===100?'var(--gold)':'var(--gold2)'}"></div></div>
-  <div class="gsum-label" style="margin-top:4px">${owned} de ${FWC_COUNT}</div>`;
+  <div class="gsum-label" style="margin-top:4px">${owned} de ${FWC_COUNT} · ${rep} repetida${rep!==1?'s':''}</div>`;
   card.appendChild(pbar);
   const grid=document.createElement('div');grid.className='sticker-grid';grid.id='sgrid-FWC';
-  for(let i=1;i<=FWC_COUNT;i++){
-    const k=`FWC-${i}`,dot=document.createElement('button');
-    dot.className='sticker'+(state.stickers[k]?' owned':'');
-    dot.textContent=i;dot.id='stk-'+k;
-    dot.onclick=()=>toggleFWC(i);
+  for(const n of fwcNums()){
+    const k=`FWC-${n}`;
+    const dot=document.createElement('button');
+    dot.className=stickerClass(k);
+    dot.textContent=n;dot.id='stk-'+k;
+    dot.onclick=()=>toggleFWC(n);
     grid.appendChild(dot);
   }
   card.appendChild(grid);container.appendChild(card);
@@ -504,41 +529,47 @@ function renderFWCPanel(container){
 
 function toggleSticker(code,num){
   const k=`${code}-${num}`;
-  state.stickers[k]=!state.stickers[k];
+  cycleStickerState(k);
   const dot=document.getElementById('stk-'+k);
-  if(dot) dot.className='sticker'+(state.stickers[k]?' owned':'');
+  if(dot) dot.className=stickerClass(k);
   updateTeamCount(code);updateAlbumGlobal();updateAlbumTabBar(activeAlbumGroup);save();
 }
 function toggleFWC(num){
   const k=`FWC-${num}`;
-  state.stickers[k]=!state.stickers[k];
+  cycleStickerState(k);
   const dot=document.getElementById('stk-'+k);
-  if(dot) dot.className='sticker'+(state.stickers[k]?' owned':'');
+  if(dot) dot.className=stickerClass(k);
   updateFWCCount();updateAlbumGlobal();updateAlbumTabBar('FWC');save();
 }
 function updateTeamCount(code){
-  const keys=teamKeys(code),owned=albumOwned(keys),el=document.getElementById('tcnt-'+code);
-  if(el){el.textContent=owned+'/'+SPT;el.className='team-cnt'+(owned===SPT?' done':'');}
+  const keys=teamKeys(code),owned=albumOwned(keys),rep=albumRepeated(keys),el=document.getElementById('tcnt-'+code);
+  if(el){
+    el.textContent=owned+'/'+SPT+(rep>0?' +'+rep+'🔵':'');
+    el.className='team-cnt'+(owned===SPT?' done':'');
+  }
 }
 function updateFWCCount(){
-  const keys=Array.from({length:FWC_COUNT},(_,i)=>`FWC-${i+1}`),owned=albumOwned(keys),el=document.getElementById('tcnt-FWC');
-  if(el){el.textContent=owned+'/'+FWC_COUNT;el.className='team-cnt'+(owned===FWC_COUNT?' done':'');}
+  const keys=fwcKeys(),owned=albumOwned(keys),rep=albumRepeated(keys),el=document.getElementById('tcnt-FWC');
+  if(el){
+    el.textContent=owned+'/'+FWC_COUNT+(rep>0?' +'+rep+'🔵':'');
+    el.className='team-cnt'+(owned===FWC_COUNT?' done':'');
+  }
   const pb=document.getElementById('fwc-pbar');
   if(pb){const pct=Math.round(owned/FWC_COUNT*100);pb.style.width=pct+'%';pb.style.background=pct===100?'var(--gold)':'var(--gold2)';}
 }
 function markAllTeam(code){
-  const isFWC=code==='FWC',count=isFWC?FWC_COUNT:SPT;
-  for(let i=1;i<=count;i++){
-    const k=`${code}-${i}`;state.stickers[k]=true;
+  const isFWC=code==='FWC',nums=isFWC?fwcNums():Array.from({length:SPT},(_,i)=>i+1);
+  for(const n of nums){
+    const k=`${code}-${n}`;state.stickers[k]=true;
     const dot=document.getElementById('stk-'+k);if(dot) dot.className='sticker owned';
   }
   if(isFWC) updateFWCCount(); else updateTeamCount(code);
   updateAlbumGlobal();updateAlbumTabBar(activeAlbumGroup);save();toast('✓ Todas marcadas');
 }
 function clearAllTeam(code){
-  const isFWC=code==='FWC',count=isFWC?FWC_COUNT:SPT;
-  for(let i=1;i<=count;i++){
-    const k=`${code}-${i}`;state.stickers[k]=false;
+  const isFWC=code==='FWC',nums=isFWC?fwcNums():Array.from({length:SPT},(_,i)=>i+1);
+  for(const n of nums){
+    const k=`${code}-${n}`;state.stickers[k]=false;
     const dot=document.getElementById('stk-'+k);if(dot) dot.className='sticker';
   }
   if(isFWC) updateFWCCount(); else updateTeamCount(code);
@@ -915,6 +946,45 @@ function selectBracketWinner(roundKey,idx,code){
   else if(roundKey==='3RD'){teamA=getLoser('SF',0);teamB=getLoser('SF',1);}
   const existing=state.bracket[`${roundKey}-${idx}`];
   setBracketResult(roundKey,idx,existing?.sa??1,existing?.sb??0,code);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SHARE MISSING
+// ═══════════════════════════════════════════════════════════════════════
+function shareMissing(code){
+  const isFWC=code==='FWC';
+  const nums=isFWC?fwcNums():Array.from({length:SPT},(_,i)=>i+1);
+  const teamInfo=isFWC?{name:'FIFA World Cup',flag:'🏆'}
+    :(()=>{for(const g of GROUPS)for(const t of g.teams)if(t.code===code)return{name:t.name,flag:FLAGS[code]||''};return{name:code,flag:''};})();
+
+  const missing=nums.filter(n=>!stickerOwned(`${code}-${n}`));
+  const repeated=nums.filter(n=>stickerRepeated(`${code}-${n}`));
+
+  let msg=`${teamInfo.flag} *${teamInfo.name}*\n`;
+
+  if(missing.length===0){
+    msg+=`✅ ¡Completo!\n`;
+  } else {
+    msg+=`📋 *Me faltan (${missing.length}):* ${missing.join(', ')}\n`;
+  }
+
+  if(repeated.length>0){
+    msg+=`🔵 *Tengo repetidas (${repeated.length}):* ${repeated.join(', ')}\n`;
+  }
+
+  if(missing.length===0&&repeated.length===0){
+    toast('¡No tenés nada para compartir!');return;
+  }
+
+  // Try native share, fall back to clipboard
+  if(navigator.share){
+    navigator.share({text:msg}).catch(()=>{});
+  } else if(navigator.clipboard){
+    navigator.clipboard.writeText(msg).then(()=>toast('📋 Copiado al portapapeles'));
+  } else {
+    // last resort: prompt
+    prompt('Copiá este texto:',msg);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
