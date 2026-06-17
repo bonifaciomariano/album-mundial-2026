@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=4.0, user-scalable=yes">
 <title>FIFA World Cup 2026</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -179,7 +179,7 @@ button{font-family:'Inter',sans-serif;cursor:pointer;-webkit-tap-highlight-color
   padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--muted);
 }
 .bracket-notice strong{color:var(--text);display:block;margin-bottom:4px}
-.bracket-rounds{display:flex;gap:10px;overflow-x:auto;padding-bottom:10px;scrollbar-width:thin;scrollbar-color:var(--surface3) transparent}
+.bracket-rounds{display:flex;gap:10px;overflow-x:auto;padding-bottom:14px;scrollbar-width:thin;scrollbar-color:var(--surface3) transparent;touch-action:pinch-zoom pan-x pan-y;-webkit-overflow-scrolling:touch}
 .bracket-round{flex-shrink:0;width:160px}
 .bracket-round-label{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;text-align:center}
 .b-match{
@@ -284,7 +284,7 @@ button{font-family:'Inter',sans-serif;cursor:pointer;-webkit-tap-highlight-color
 <section class="section" id="sec-bracket">
   <div class="bracket-notice">
     <strong>Llaves de eliminación directa</strong>
-    Completá los resultados del fixture para que el bracket se arme automáticamente. Tocá un equipo clasificado para seleccionar al ganador en las rondas siguientes.
+    Completá los resultados del fixture para que el bracket se arme automáticamente. Deslizá horizontalmente y usá pinch-zoom para ver todo el cuadro. La final está al centro, con cada mitad del cuadro a los costados.
   </div>
   <div class="bracket-rounds" id="bracket-rounds"></div>
 </section>
@@ -775,6 +775,28 @@ const R16_SLOTS=[
   {a:{g:'D',p:1},b:{g:'G',p:1},label:'2D vs 2G'},
 ];
 
+// Octavos de Final (R8) - art. 12.7: cruces de los 16 ganadores de R16 (M89-M96)
+// índices refieren a la posición del partido de R16 (0-indexed, partido 1=idx0...partido16=idx15)
+const R8_PAIRS=[
+  [1,4],   // M89: (2)W74 - (5)W77
+  [0,2],   // M90: (1)W73 - (3)W75
+  [3,5],   // M91: (4)W76 - (6)W78
+  [6,7],   // M92: (7)W79 - (8)W80
+  [10,11], // M93: (11)W83 - (12)W84
+  [8,9],   // M94: (9)W81 - (10)W82
+  [13,15], // M95: (14)W86 - (16)W88
+  [12,14], // M96: (13)W85 - (15)W87
+];
+
+// Cuartos de Final (QF) - art. 12.8: cruces de los 8 ganadores de R8 (M97-M100)
+// índices refieren a la posición del partido de R8 (0-indexed)
+const QF_PAIRS=[
+  [0,1], // M97: (17)W89 - (18)W90
+  [4,5], // M98: (21)W93 - (22)W94
+  [2,3], // M99: (19)W91 - (20)W92
+  [6,7], // M100: (23)W95 - (24)W96
+];
+
 function resolveSlot(slot){
   if(slot.g==='best3') return null; // TBD for best thirds
   return getGroupPos(slot.g,slot.p);
@@ -783,6 +805,36 @@ function resolveSlot(slot){
 function getR16Teams(idx){
   const s=R16_SLOTS[idx];
   return {a:resolveSlot(s.a),b:resolveSlot(s.b),labelA:s.a.g==='best3'?s.a.label:`${s.a.p===0?'1°':'2°'} Grupo ${s.a.g}`,labelB:s.b.g==='best3'?s.b.label:`${s.b.p===0?'1°':'2°'} Grupo ${s.b.g}`};
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// BRACKET
+// ═══════════════════════════════════════════════════════════════════════
+
+// Helper: get the two teams that feed into a given round/index
+function getMatchTeams(roundKey,idx){
+  if(roundKey==='R16'){
+    const r=getR16Teams(idx);
+    return {teamA:r.a,teamB:r.b,labelA:r.labelA,labelB:r.labelB};
+  }
+  if(roundKey==='R8'){
+    const [i1,i2]=R8_PAIRS[idx];
+    return {teamA:getBracketWinner('R16',i1),teamB:getBracketWinner('R16',i2),labelA:'?',labelB:'?'};
+  }
+  if(roundKey==='QF'){
+    const [i1,i2]=QF_PAIRS[idx];
+    return {teamA:getBracketWinner('R8',i1),teamB:getBracketWinner('R8',i2),labelA:'?',labelB:'?'};
+  }
+  if(roundKey==='SF'){
+    return {teamA:getBracketWinner('QF',idx*2),teamB:getBracketWinner('QF',idx*2+1),labelA:'?',labelB:'?'};
+  }
+  if(roundKey==='F'){
+    return {teamA:getBracketWinner('SF',0),teamB:getBracketWinner('SF',1),labelA:'?',labelB:'?'};
+  }
+  if(roundKey==='3RD'){
+    return {teamA:getLoser('SF',0),teamB:getLoser('SF',1),labelA:'Perdedor SF1',labelB:'Perdedor SF2'};
+  }
+  return {teamA:null,teamB:null,labelA:'?',labelB:'?'};
 }
 
 function getBracketWinner(roundKey,idx){
@@ -794,158 +846,114 @@ function setBracketResult(roundKey,idx,sa,sb,winner){
   state.bracket[k]={sa,sb,winner};
   save();renderBracket();
 }
+function getLoser(roundKey,idx){
+  const saved=state.bracket[`${roundKey}-${idx}`];
+  if(!saved||!saved.winner) return null;
+  const {teamA,teamB}=getMatchTeams(roundKey,idx);
+  if(!teamA||!teamB) return null;
+  return saved.winner===teamA?teamB:teamA;
+}
 
-// ═══════════════════════════════════════════════════════════════════════
-// BRACKET
-// ═══════════════════════════════════════════════════════════════════════
+function teamName(code){return GROUPS.flatMap(g=>g.teams).find(t=>t.code===code)?.name||code;}
+
+function mkBracketMatch(roundKey,idx){
+  const {teamA,teamB,labelA,labelB}=getMatchTeams(roundKey,idx);
+  const saved=state.bracket[`${roundKey}-${idx}`];
+  const winner=saved?.winner||null;
+  const sa=saved?.sa??'',sb=saved?.sb??'';
+
+  const matchEl=document.createElement('div');matchEl.className='b-match';
+  const mkTeam=(code,label,isA)=>{
+    const div=document.createElement('div');
+    const isWinner=winner&&winner===code;
+    const isLoser=winner&&winner!==code&&code;
+    div.className='b-team'+(isWinner?' winner':isLoser?' loser':'');
+    div.innerHTML=`<span class="b-team-flag">${code?FLAGS[code]||'🏳️':'❓'}</span>
+      <span class="b-team-name">${code?teamName(code):`<span class="tbd">${label}</span>`}</span>
+      <div class="b-score-area">
+        <input class="b-score" type="number" min="0" max="99" value="${isA?sa:sb}" placeholder="–"
+          onchange="handleBracketScore('${roundKey}',${idx},this,'${isA?'a':'b'}')"
+          oninput="handleBracketScore('${roundKey}',${idx},this,'${isA?'a':'b'}')">
+      </div>`;
+    if(code) div.onclick=(e)=>{if(e.target.classList.contains('b-score'))return;selectBracketWinner(roundKey,idx,code);};
+    return div;
+  };
+  matchEl.appendChild(mkTeam(teamA,labelA,true));
+  matchEl.appendChild(Object.assign(document.createElement('div'),{className:'b-divider'}));
+  matchEl.appendChild(mkTeam(teamB,labelB,false));
+  return matchEl;
+}
+
+function mkRoundColumn(label,roundKey,indices){
+  const col=document.createElement('div');col.className='bracket-round';
+  const lbl=document.createElement('div');lbl.className='bracket-round-label';lbl.textContent=label;
+  col.appendChild(lbl);
+  indices.forEach(idx=>col.appendChild(mkBracketMatch(roundKey,idx)));
+  return col;
+}
+
 function renderBracket(){
   const container=document.getElementById('bracket-rounds');
   if(!container) return;
   container.innerHTML='';
 
-  // Recompute all group standings
+  // Recompute all group standings fresh
+  if(!state.bracket) state.bracket={};
   for(const g of GROUPS){
-    const br=state.bracket||{};
-    // always recompute from scores
     const rows=getGroupStandings(g.id);
-    if(!state.bracket) state.bracket={};
     state.bracket['group-'+g.id]={p1:rows[0].code,p2:rows[1].code,p3:rows[2]?.code,p4:rows[3]?.code};
   }
 
-  const rounds=[
-    {key:'R16',label:'16avos',count:16},
-    {key:'QF',label:'Cuartos',count:8},
-    {key:'SF',label:'Semis',count:4},
-    {key:'F',label:'Final',count:2},
-  ];
+  // LEFT HALF: R16 matches 0-7 → R8 0-3 → QF 0-1 → SF 0
+  // RIGHT HALF: R16 matches 8-15 → R8 4-7 → QF 2-3 → SF 1
+  const wrap=document.createElement('div');
+  wrap.style.cssText='display:flex;align-items:flex-start;gap:14px;min-width:max-content';
 
-  rounds.forEach((round,ri)=>{
-    const col=document.createElement('div');col.className='bracket-round';
-    const lbl=document.createElement('div');lbl.className='bracket-round-label';lbl.textContent=round.label;
-    col.appendChild(lbl);
+  const leftHalf=document.createElement('div');
+  leftHalf.style.cssText='display:flex;gap:10px';
+  leftHalf.appendChild(mkRoundColumn('16avos',  'R16', [0,1,2,3,4,5,6,7]));
+  leftHalf.appendChild(mkRoundColumn('Octavos', 'R8',  [0,1,2,3]));
+  leftHalf.appendChild(mkRoundColumn('Cuartos', 'QF',  [0,1]));
+  leftHalf.appendChild(mkRoundColumn('Semifinal','SF', [0]));
 
-    const matchCount=round.count/2;
-    for(let i=0;i<matchCount;i++){
-      let teamA=null,teamB=null,labelA='?',labelB='?';
-      if(round.key==='R16'){
-        const r=getR16Teams(i);
-        teamA=r.a;teamB=r.b;labelA=r.labelA;labelB=r.labelB;
-      } else {
-        const prevKey=rounds[ri-1].key;
-        teamA=getBracketWinner(prevKey,i*2);
-        teamB=getBracketWinner(prevKey,i*2+1);
-      }
-
-      const bk=`${round.key}-${i}`;
-      const saved=state.bracket[bk];
-      const winner=saved?.winner||null;
-      const sa=saved?.sa??'';
-      const sb=saved?.sb??'';
-
-      const matchEl=document.createElement('div');matchEl.className='b-match';
-
-      const mkTeam=(code,label,isA)=>{
-        const div=document.createElement('div');
-        const isWinner=winner&&winner===code;
-        const isLoser=winner&&winner!==code&&code;
-        div.className='b-team'+(isWinner?' winner':isLoser?' loser':'');
-        div.innerHTML=`<span class="b-team-flag">${code?FLAGS[code]||'🏳️':'❓'}</span>
-          <span class="b-team-name">${code?(GROUPS.flatMap(g=>g.teams).find(t=>t.code===code)?.name||code):`<span class="tbd">${label}</span>`}</span>
-          <div class="b-score-area">
-            <input class="b-score" type="number" min="0" max="99" value="${isA?sa:sb}" placeholder="–"
-              onchange="handleBracketScore('${round.key}',${i},this,'${isA?'a':'b'}',${isA})"
-              oninput="handleBracketScore('${round.key}',${i},this,'${isA?'a':'b'}',${isA})">
-          </div>`;
-        if(code){
-          div.onclick=(e)=>{if(e.target.classList.contains('b-score'))return;selectBracketWinner(round.key,i,code);};
-        }
-        return div;
-      };
-
-      matchEl.appendChild(mkTeam(teamA,labelA,true));
-      matchEl.appendChild(Object.assign(document.createElement('div'),{className:'b-divider'}));
-      matchEl.appendChild(mkTeam(teamB,labelB,false));
-      col.appendChild(matchEl);
-    }
-
-    // Add 3rd place match after final setup
-    if(round.key==='F'){
-      const lbl3=document.createElement('div');lbl3.className='bracket-round-label';lbl3.style.marginTop='16px';lbl3.textContent='3er Puesto';
-      col.appendChild(lbl3);
-      const sf1L=getLoser('SF',0),sf2L=getLoser('SF',1);
-      const saved3=state.bracket['3RD-0'];
-      const matchEl3=document.createElement('div');matchEl3.className='b-match';
-      const mk3=(code,label,isA)=>{
-        const div=document.createElement('div');
-        const w=saved3?.winner;
-        div.className='b-team'+(w&&w===code?' winner':w&&w!==code&&code?' loser':'');
-        div.innerHTML=`<span class="b-team-flag">${code?FLAGS[code]||'🏳️':'❓'}</span>
-          <span class="b-team-name">${code?(GROUPS.flatMap(g=>g.teams).find(t=>t.code===code)?.name||code):`<span class="tbd">${label}</span>`}</span>
-          <div class="b-score-area">
-            <input class="b-score" type="number" min="0" max="99" value="${isA?(saved3?.sa??''):(saved3?.sb??'')}" placeholder="–"
-              onchange="handleBracketScore('3RD',0,this,'${isA?'a':'b'}',${isA})"
-              oninput="handleBracketScore('3RD',0,this,'${isA?'a':'b'}',${isA})">
-          </div>`;
-        if(code) div.onclick=(e)=>{if(e.target.classList.contains('b-score'))return;selectBracketWinner('3RD',0,code);};
-        return div;
-      };
-      matchEl3.appendChild(mk3(sf1L,'Perdedor SF1',true));
-      matchEl3.appendChild(Object.assign(document.createElement('div'),{className:'b-divider'}));
-      matchEl3.appendChild(mk3(sf2L,'Perdedor SF2',false));
-      col.appendChild(matchEl3);
-    }
-
-    container.appendChild(col);
-  });
-
-  // Champion display
+  const center=document.createElement('div');
+  center.style.cssText='display:flex;flex-direction:column;align-items:center;gap:10px;padding-top:0';
+  center.appendChild(mkRoundColumn('🏆 FINAL','F',[0]));
+  const lbl3=document.createElement('div');lbl3.className='bracket-round-label';lbl3.style.marginTop='10px';lbl3.textContent='3er Puesto';
+  center.appendChild(lbl3);
+  center.appendChild(mkBracketMatch('3RD',0));
   const champ=getBracketWinner('F',0);
   if(champ){
-    const col=document.createElement('div');col.className='bracket-round';
-    col.innerHTML=`<div class="bracket-round-label">Campeón</div>
-    <div style="background:var(--surface2);border:2px solid var(--gold);border-radius:10px;padding:16px 12px;text-align:center">
-      <div style="font-size:32px">${FLAGS[champ]||'🏆'}</div>
-      <div style="font-size:14px;font-weight:900;color:var(--gold);margin-top:6px">${GROUPS.flatMap(g=>g.teams).find(t=>t.code===champ)?.name||champ}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:2px">🏆 Campeón FIFA WC 2026</div>
-    </div>`;
-    container.appendChild(col);
+    const champCard=document.createElement('div');
+    champCard.style.cssText='margin-top:14px;background:var(--surface2);border:2px solid var(--gold);border-radius:10px;padding:14px 10px;text-align:center;width:160px';
+    champCard.innerHTML=`<div style="font-size:28px">${FLAGS[champ]||'🏆'}</div>
+      <div style="font-size:13px;font-weight:900;color:var(--gold);margin-top:6px">${teamName(champ)}</div>
+      <div style="font-size:9px;color:var(--muted);margin-top:2px">🏆 Campeón FIFA WC 2026</div>`;
+    center.appendChild(champCard);
   }
-}
 
-function getLoser(roundKey,idx){
-  const k=`${roundKey}-${idx}`;
-  const saved=state.bracket[k];
-  if(!saved||!saved.winner) return null;
-  // Get teams in this match
-  const matchCount=roundKey==='SF'?2:8;
-  let teamA=null,teamB=null;
-  if(roundKey==='SF'){
-    const prevWinners=['QF'];
-    teamA=getBracketWinner('QF',idx*2);
-    teamB=getBracketWinner('QF',idx*2+1);
-  } else if(roundKey==='QF'){
-    teamA=getBracketWinner('R16',idx*2);
-    teamB=getBracketWinner('R16',idx*2+1);
-  }
-  if(!teamA||!teamB) return null;
-  return saved.winner===teamA?teamB:teamA;
+  const rightHalf=document.createElement('div');
+  rightHalf.style.cssText='display:flex;gap:10px';
+  rightHalf.appendChild(mkRoundColumn('Semifinal','SF', [1]));
+  rightHalf.appendChild(mkRoundColumn('Cuartos', 'QF',  [2,3]));
+  rightHalf.appendChild(mkRoundColumn('Octavos', 'R8',  [4,5,6,7]));
+  rightHalf.appendChild(mkRoundColumn('16avos',  'R16', [8,9,10,11,12,13,14,15]));
+
+  wrap.appendChild(leftHalf);
+  wrap.appendChild(center);
+  wrap.appendChild(rightHalf);
+  container.appendChild(wrap);
 }
 
 let bracketScoreTemp={};
-function handleBracketScore(roundKey,idx,inp,side,isA){
+function handleBracketScore(roundKey,idx,inp,side){
   const tempKey=`${roundKey}-${idx}`;
   if(!bracketScoreTemp[tempKey]) bracketScoreTemp[tempKey]={sa:null,sb:null};
   const val=inp.value===''?null:parseInt(inp.value);
   if(side==='a') bracketScoreTemp[tempKey].sa=val; else bracketScoreTemp[tempKey].sb=val;
   const {sa,sb}=bracketScoreTemp[tempKey];
   if(sa!==null&&sb!==null&&sa!==sb){
-    // auto-determine winner
-    let teamA,teamB;
-    if(roundKey==='R16'){const r=getR16Teams(idx);teamA=r.a;teamB=r.b;}
-    else if(roundKey==='QF'){teamA=getBracketWinner('R16',idx*2);teamB=getBracketWinner('R16',idx*2+1);}
-    else if(roundKey==='SF'){teamA=getBracketWinner('QF',idx*2);teamB=getBracketWinner('QF',idx*2+1);}
-    else if(roundKey==='F'){teamA=getBracketWinner('SF',0);teamB=getBracketWinner('SF',1);}
-    else if(roundKey==='3RD'){teamA=getLoser('SF',0);teamB=getLoser('SF',1);}
+    const {teamA,teamB}=getMatchTeams(roundKey,idx);
     if(teamA&&teamB){
       const winner=sa>sb?teamA:teamB;
       setBracketResult(roundKey,idx,sa,sb,winner);
@@ -954,12 +962,7 @@ function handleBracketScore(roundKey,idx,inp,side,isA){
 }
 
 function selectBracketWinner(roundKey,idx,code){
-  let sa=0,sb=0,teamA,teamB;
-  if(roundKey==='R16'){const r=getR16Teams(idx);teamA=r.a;teamB=r.b;}
-  else if(roundKey==='QF'){teamA=getBracketWinner('R16',idx*2);teamB=getBracketWinner('R16',idx*2+1);}
-  else if(roundKey==='SF'){teamA=getBracketWinner('QF',idx*2);teamB=getBracketWinner('QF',idx*2+1);}
-  else if(roundKey==='F'){teamA=getBracketWinner('SF',0);teamB=getBracketWinner('SF',1);}
-  else if(roundKey==='3RD'){teamA=getLoser('SF',0);teamB=getLoser('SF',1);}
+  const {teamA,teamB}=getMatchTeams(roundKey,idx);
   const existing=state.bracket[`${roundKey}-${idx}`];
   setBracketResult(roundKey,idx,existing?.sa??1,existing?.sb??0,code);
 }
